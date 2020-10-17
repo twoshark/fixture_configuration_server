@@ -1,0 +1,2 @@
+# fixture_configuration_server
+Lighting Fixture Configuration Server
