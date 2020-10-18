@@ -10,11 +10,14 @@ import (
 
 //AddDevicesRoutes ...
 func AddDevicesRoutes(e *echo.Echo, d *devices.Devices) {
-	e.GET("/devices", GetDevices(d))
-	e.GET("/devices/:name", GetDevice(d))
-	e.POST("/devices/:name", CreateDevice(d))
-	e.PUT("/devices/:name", UpdateDevice(d))
-	e.DELETE("/devices/:name", DeleteDevice(d))
+	devicesGroup := e.Group("api/devices")
+	devicesGroup.GET("/", GetDevices(d))
+
+	deviceGroup := e.Group("api/devices/:name")
+	deviceGroup.GET("/", GetDevice(d))
+	deviceGroup.POST("/", CreateDevice(d))
+	deviceGroup.PUT("/", UpdateDevice(d))
+	deviceGroup.DELETE("/", DeleteDevice(d))
 
 }
 

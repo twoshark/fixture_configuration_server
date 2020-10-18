@@ -11,16 +11,21 @@ import (
 
 //AddFixtureHandlers ...
 func AddFixtureHandlers(e *echo.Echo, d *devices.Devices) {
-	e.GET("/devices/:device/fixture/:name", GetFixture(d))
-	e.POST("/devices/:device/fixture/:name", CreateFixture(d))
-	e.PUT("/devices/:device/fixture/:name", UpdateFixture(d))
-	e.DELETE("/devices/:device/fixture/:name", DeleteFixture(d))
+
+	fixturesGroup := e.Group("api/devices/:device/fixtures")
+	fixturesGroup.GET("/", getFixtures(d))
+
+	fixtureGroup := e.Group("api/devices/:device/fixtures/:name")
+	fixtureGroup.GET("/", GetFixture(d))
+	fixtureGroup.POST("/", CreateFixture(d))
+	fixtureGroup.PUT("/", UpdateFixture(d))
+	fixtureGroup.DELETE("/", DeleteFixture(d))
 }
 
 //GetFixture ...
 func GetFixture(d *devices.Devices) func(c echo.Context) error {
-	fmt.Println("Endpoint Hit: Get Fixture")
 	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Get Fixture")
 		name := c.Param("name")
 		deviceName := c.Param("device")
 		_, device := d.Find(deviceName)
@@ -29,10 +34,20 @@ func GetFixture(d *devices.Devices) func(c echo.Context) error {
 	}
 }
 
+//GetFixtures ...
+func getFixtures(d *devices.Devices) func(c echo.Context) error {
+	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Get Fixture")
+		deviceName := c.Param("device")
+		_, device := d.Find(deviceName)
+		return c.JSON(http.StatusOK, device.BasicFixtures)
+	}
+}
+
 //CreateFixture ...
 func CreateFixture(d *devices.Devices) func(c echo.Context) error {
-	fmt.Println("Endpoint Hit: Create Fixture")
 	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Create Fixture")
 		var newFixture fixtures.BasicFixture
 		if err := c.Bind(newFixture); err != nil {
 			return c.JSON(http.StatusBadRequest, "Bad Request")
@@ -50,8 +65,8 @@ func CreateFixture(d *devices.Devices) func(c echo.Context) error {
 
 //UpdateFixture ...
 func UpdateFixture(d *devices.Devices) func(c echo.Context) error {
-	fmt.Println("Endpoint Hit: Update Fixture")
 	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Update Fixture")
 		var updateFixture fixtures.BasicFixture
 		if err := c.Bind(updateFixture); err != nil {
 			return c.JSON(http.StatusBadRequest, updateFixture)
@@ -70,9 +85,8 @@ func UpdateFixture(d *devices.Devices) func(c echo.Context) error {
 
 //DeleteFixture ...
 func DeleteFixture(d *devices.Devices) func(c echo.Context) error {
-	fmt.Println("Endpoint Hit: Delete Fixture")
 	return func(c echo.Context) error {
-
+		fmt.Println("Endpoint Hit: Delete Fixture")
 		var deleteFixture fixtures.BasicFixture
 		if err := c.Bind(deleteFixture); err != nil {
 			return c.JSON(http.StatusBadRequest, "Bad Requesr")
