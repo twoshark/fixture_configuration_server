@@ -1,80 +1,89 @@
 package routes
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo"
 	"github.com/twoshark/fixture_configuration_server/server/devices"
 	"github.com/twoshark/fixture_configuration_server/server/fixtures"
 )
 
-func addFixtureHandlers(router *mux.Router, d *devices.Device) {
-	router.HandleFunc("/devices/"+d.Name+"/fixture/{name}", GetFixture(d))
-	router.HandleFunc("/devices/"+d.Name+"/fixture/{name}", CreateFixture(d)).Methods("POST")
-	router.HandleFunc("/devices/"+d.Name+"/fixture/{name}", UpdateFixture(d)).Methods("PUT")
-	router.HandleFunc("/devices/"+d.Name+"/fixture/{name}", DeleteFixture(d)).Methods("DELETE")
+func addFixtureHandlers(e *echo.Echo, d *devices.Devices) {
+	e.GET("/devices/:device/fixture/:name", GetFixture(d))
+	e.POST("/devices/:device/fixture/:name", CreateFixture(d))
+	e.PUT("/devices/:device/fixture/:name", UpdateFixture(d))
+	e.DELETE("/devices/:device/fixture/:name", DeleteFixture(d))
 }
 
 //GetFixture ...
-func GetFixture(d *devices.Device) func(w http.ResponseWriter, r *http.Request) {
+func GetFixture(d *devices.Devices) func(c echo.Context) error {
 	fmt.Println("Endpoint Hit: Get Fixture")
-	return func(w http.ResponseWriter, r *http.Request) {
-		name := mux.Vars(r)["name"]
-		_, fixture := d.BasicFixtures.Find(name)
-		json.NewEncoder(w).Encode(fixture)
+	return func(c echo.Context) error {
+		name := c.Param("name")
+		deviceName := c.Param("device")
+		_, device := d.Find(deviceName)
+		_, fixture := device.BasicFixtures.Find(name)
+		return c.JSON(http.StatusOK, fixture)
 	}
 }
 
 //CreateFixture ...
-func CreateFixture(d *devices.Device) func(w http.ResponseWriter, r *http.Request) {
+func CreateFixture(d *devices.Devices) func(c echo.Context) error {
 	fmt.Println("Endpoint Hit: Create Fixture")
-	return func(w http.ResponseWriter, r *http.Request) {
-		reqBody, _ := ioutil.ReadAll(r.Body)
+	return func(c echo.Context) error {
 		var newFixture fixtures.BasicFixture
-		json.Unmarshal(reqBody, &newFixture)
-
-		index, fixture := d.BasicFixtures.Find(newFixture.Name)
-		if index != -1 {
-			fmt.Fprintf(w, "ERROR: This Fixture Already Exists")
+		if err := c.Bind(newFixture); err != nil {
+			return c.JSON(http.StatusBadRequest, "Bad Request")
 		}
-		d.BasicFixtures.Add(fixture)
-		json.NewEncoder(w).Encode(fixture)
+		deviceName := c.Param("device")
+		_, device := d.Find(deviceName)
+		index, fixture := device.BasicFixtures.Find(newFixture.Name)
+		if index != -1 {
+			return c.JSON(http.StatusBadRequest, "ERROR: This Fixture Already Exists")
+		}
+		device.BasicFixtures.Add(fixture)
+		return c.JSON(http.StatusOK, fixture)
 	}
 }
 
 //UpdateFixture ...
-func UpdateFixture(d *devices.Device) func(w http.ResponseWriter, r *http.Request) {
+func UpdateFixture(d *devices.Devices) func(c echo.Context) error {
 	fmt.Println("Endpoint Hit: Update Fixture")
-	return func(w http.ResponseWriter, r *http.Request) {
-		reqBody, _ := ioutil.ReadAll(r.Body)
+	return func(c echo.Context) error {
 		var updateFixture fixtures.BasicFixture
-		json.Unmarshal(reqBody, &updateFixture)
-
-		index, fixture := d.BasicFixtures.Find(updateFixture.Name)
-		if index == -1 {
-			fmt.Fprintf(w, "ERROR: The Fixture Was Not Found. Try Creating")
+		if err := c.Bind(updateFixture); err != nil {
+			return c.JSON(http.StatusBadRequest, updateFixture)
 		}
-		d.BasicFixtures.Update(index, fixture)
-		json.NewEncoder(w).Encode(d.BasicFixtures[index])
+
+		deviceName := c.Param("device")
+		_, device := d.Find(deviceName)
+		index, fixture := device.BasicFixtures.Find(updateFixture.Name)
+		if index == -1 {
+			return c.JSON(http.StatusBadRequest, "ERROR: The Fixture Was Not Found. Try Creating")
+		}
+		device.BasicFixtures.Update(index, fixture)
+		return c.JSON(http.StatusOK, device.BasicFixtures[index])
 	}
 }
 
 //DeleteFixture ...
-func DeleteFixture(d *devices.Device) func(w http.ResponseWriter, r *http.Request) {
+func DeleteFixture(d *devices.Devices) func(c echo.Context) error {
 	fmt.Println("Endpoint Hit: Delete Fixture")
-	return func(w http.ResponseWriter, r *http.Request) {
-		reqBody, _ := ioutil.ReadAll(r.Body)
-		var deleteFixture fixtures.BasicFixture
-		json.Unmarshal(reqBody, &deleteFixture)
+	return func(c echo.Context) error {
 
-		index, _ := d.BasicFixtures.Find(deleteFixture.Name)
-		if index != -1 {
-			d.BasicFixtures.Delete(index, true)
-			fmt.Fprintf(w, "Deleted.")
+		var deleteFixture fixtures.BasicFixture
+		if err := c.Bind(deleteFixture); err != nil {
+			return c.JSON(http.StatusBadRequest, "Bad Requesr")
 		}
-		fmt.Fprintf(w, "Not Found.")
+
+		deviceName := c.Param("device")
+		_, device := d.Find(deviceName)
+		index, _ := device.BasicFixtures.Find(deleteFixture.Name)
+		if index != -1 {
+			device.BasicFixtures.Delete(index, true)
+			return c.JSON(http.StatusOK, "Deleted.")
+		}
+		return c.JSON(http.StatusNotFound, "Not Found.")
 	}
 }

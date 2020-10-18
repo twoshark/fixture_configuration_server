@@ -1,92 +1,96 @@
 package routes
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo"
 	"github.com/twoshark/fixture_configuration_server/server/devices"
 )
 
 //AddDevicesRoutes ...
-func AddDevicesRoutes(router *mux.Router, d *devices.Devices) {
-	router.HandleFunc("/devices", GetDevices(d))
-	router.HandleFunc("/devices/{name}", GetDevice(d))
-	//router.HandleFunc("/devices/{name}", CreateDevice(&i)).Methods("POST")
-	//router.HandleFunc("/devices/{name}", UpdateDevice(&i)).Methods("PUT")
-	//router.HandleFunc("/devices/{name}", DeleteDevice(&i)).Methods("DELETE")
+func AddDevicesRoutes(e *echo.Echo, d *devices.Devices) {
+	e.GET("/devices", GetDevices(d))
+	e.GET("/devices/:name", GetDevice(d))
+	e.POST("/devices/:name", CreateDevice(d))
+	e.PUT("/devices/:name", UpdateDevice(d))
+	e.DELETE("/devices/:name", DeleteDevice(d))
+
 }
 
 //GetDevices ...
-func GetDevices(d *devices.Devices) func(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Get Devices")
-	return func(w http.ResponseWriter, r *http.Request) {
-		json.NewEncoder(w).Encode(d)
+func GetDevices(d *devices.Devices) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Get Devices")
+		return c.JSON(200, d)
 	}
 }
 
 //GetDevice ...
-func GetDevice(d *devices.Devices) func(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Get Device")
-	return func(w http.ResponseWriter, r *http.Request) {
-		name := mux.Vars(r)["name"]
+func GetDevice(d *devices.Devices) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Get Device")
+		name := c.Param("name")
 		index, device := d.Find(name)
 		if index >= 0 {
-			json.NewEncoder(w).Encode(device)
+			return c.JSON(http.StatusOK, device)
 		}
+		return c.JSON(http.StatusNotFound, "Not Found")
 	}
 }
 
 //CreateDevice ...
-func CreateDevice(d *devices.Devices) func(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Create Device")
-	return func(w http.ResponseWriter, r *http.Request) {
-		reqBody, _ := ioutil.ReadAll(r.Body)
+func CreateDevice(d *devices.Devices) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Create Device")
+
 		var newDevice devices.Device
-		json.Unmarshal(reqBody, &newDevice)
+		if err := c.Bind(newDevice); err != nil {
+			return err
+		}
 
 		index, _ := d.Find(newDevice.Name)
 		if index != -1 {
-			fmt.Fprintf(w, "ERROR: This Device Already Exists")
-			return
+			return c.JSON(http.StatusNotFound, "ERROR: This Device Already Exists")
 		}
 		d.Add(newDevice)
-		json.NewEncoder(w).Encode(newDevice)
+		return c.JSON(http.StatusOK, newDevice)
 	}
 }
 
 //UpdateDevice ...
-func UpdateDevice(d *devices.Devices) func(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Update Device")
-	return func(w http.ResponseWriter, r *http.Request) {
-		reqBody, _ := ioutil.ReadAll(r.Body)
+func UpdateDevice(d *devices.Devices) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Update Device")
 		var update devices.Device
-		json.Unmarshal(reqBody, &update)
+		if err := c.Bind(update); err != nil {
+			return err
+		}
 
 		index, device := d.Find(update.Name)
 		if index == -1 {
-			fmt.Fprintf(w, "ERROR: The Device Was Not Found. Try Creating")
+			return c.JSON(http.StatusNotFound, "ERROR: The Device Was Not Found. Try Creating")
 		}
 		d.Update(index, device)
-		json.NewEncoder(w).Encode(d.Devices[index])
+		return c.JSON(http.StatusOK, d.Devices[index])
 	}
 }
 
 //DeleteDevice ...
-func DeleteDevice(d *devices.Devices) func(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Endpoint Hit: Delete Device")
-	return func(w http.ResponseWriter, r *http.Request) {
-		reqBody, _ := ioutil.ReadAll(r.Body)
+func DeleteDevice(d *devices.Devices) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		fmt.Println("Endpoint Hit: Delete Device")
 		var delete devices.Device
-		json.Unmarshal(reqBody, &delete)
+		if err := c.Bind(delete); err != nil {
+			return err
+		}
 
 		index, _ := d.Find(delete.Name)
 		if index != -1 {
 			d.Delete(index, true)
-			fmt.Fprintf(w, "Deleted.")
+
+			return c.JSON(http.StatusOK, "Deleted.")
 		}
-		fmt.Fprintf(w, "Not Found.")
+		return c.JSON(http.StatusNotFound, "Not Found")
 	}
 }

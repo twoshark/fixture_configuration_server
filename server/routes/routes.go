@@ -4,25 +4,19 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/labstack/echo"
 	"github.com/twoshark/fixture_configuration_server/server/devices"
 )
 
 //AddRoutes ...
-func AddRoutes(router *mux.Router, d *devices.Devices) {
-	router.HandleFunc("/", home)
-	router.HandleFunc("/refresh", refresh)
-	AddDevicesRoutes(router, d)
-	for _, device := range d.Devices {
-		addFixtureHandlers(router, &device)
-	}
+func AddRoutes(e *echo.Echo, d *devices.Devices) {
+	e.GET("/", home)
+	AddDevicesRoutes(e, d)
+	addFixtureHandlers(e, d)
+
 }
 
-func home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to The Installation Config Server")
+func home(c echo.Context) error {
 	fmt.Println("Endpoint Hit: homePage")
-}
-
-func refresh(w http.ResponseWriter, r *http.Request) {
-
+	return c.JSON(http.StatusOK, "Welcome to The Installation Config Server")
 }
