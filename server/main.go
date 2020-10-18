@@ -18,7 +18,12 @@ func main() {
 	e.Use(middleware.Recover())
 
 	devices := devices.NewDevices("Demo")
-	routes.AddRoutes(e, &devices)
+	// Routes
+	e.Static("/static", "../build/static")
+	e.File("/*", "../build/index.html")
+	routes.AddDevicesRoutes(e, &devices)
+	routes.AddFixtureHandlers(e, &devices)
+
 	log.Println("Start Server")
 	log.Fatal(e.Start("0.0.0.0:10000"))
 }

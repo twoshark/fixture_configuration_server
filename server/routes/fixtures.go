@@ -9,7 +9,8 @@ import (
 	"github.com/twoshark/fixture_configuration_server/server/fixtures"
 )
 
-func addFixtureHandlers(e *echo.Echo, d *devices.Devices) {
+//AddFixtureHandlers ...
+func AddFixtureHandlers(e *echo.Echo, d *devices.Devices) {
 	e.GET("/devices/:device/fixture/:name", GetFixture(d))
 	e.POST("/devices/:device/fixture/:name", CreateFixture(d))
 	e.PUT("/devices/:device/fixture/:name", UpdateFixture(d))
